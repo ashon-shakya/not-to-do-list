@@ -1,143 +1,174 @@
-const HOURS_IN_WEEK = 7 * 24;
 let taskList = [];
+const RANDOM_STRING_LENGTH = 6;
+const WEEKLY_HOUR = 7 * 12;
 
-const handleOnSubmit = (event) => {
-    const formData = new FormData(event);
-    let task = formData.get("task");
-    let hour = parseInt(formData.get("hour"));
-    let id = generateRandomId(6);
+const addTask = (myForm) => {
+    const formData = new FormData(myForm);
+    const task = formData.get("task");
+    const hour = parseInt(formData.get("hour"));
 
-    let taskObj = {
+    console.log(task, hour);
+    const id = getRandomUniqueID();
+
+    const taskObj = {
         id,
         task,
         hour,
         type: "good",
     };
 
-    const totalHours = getTotalHours();
-
-    if (totalHours + hour <= HOURS_IN_WEEK) {
-        taskList.push(taskObj);
+    // check for weekly hour
+    let totalHour = getTotalHours();
+    if (totalHour + hour > WEEKLY_HOUR) {
+        displayAlert("WEEKLY HOUR EXCEEDED");
     } else {
-        const toastLiveExample = document.getElementById("liveToast");
-        const toastBootstrap =
-            bootstrap.Toast.getOrCreateInstance(toastLiveExample);
-        toastBootstrap.show();
+        displayAlert("TASK ADDED");
+        taskList.push(taskObj);
+        displayList();
+        myForm.reset();
     }
-
-    displayTaskList();
-    event.reset();
 };
 
-const displayTaskList = () => {
+const displayList = () => {
+    console.log("INSIDE DISPLAY");
+    // updating good list
     const goodListElement = document.getElementById("goodList");
-    const badListElement = document.getElementById("badList");
 
-    let goodTaskList = "";
-    let badTaskList = "";
+    let goodListElementContent = "";
 
     let goodIndex = 0;
-    let badIndex = 0;
 
-    taskList.map((item) => {
+    taskList.map((item, index) => {
         if (item.type == "good") {
-            goodTaskList += `
+            goodIndex = goodIndex + 1;
+            goodListElementContent += `
                 <tr>
-                    <th>${goodIndex + 1}</th>
-                    <td>${item.task}</td>
-                    <td>${item.hour} hour/s</td>
-                    <td class="text-end">
-                        <button class="btn btn-danger" onClick="handleOnDelete('${
-                            item.id
-                        }')"> <i class="fa-solid fa-trash"></i></button>
-                        <button class="btn btn-success" onClick="handleSwitchTask('${
-                            item.id
-                        }')"> <i class="fa-solid fa-arrow-right"></i></button>
-                    </td>
-                </tr>`;
-            goodIndex += 1;
-        }
-
-        if (item.type == "bad") {
-            badTaskList += `
-            <tr>
-                <th>${badIndex + 1}</th>
+                <th scope="row">${goodIndex}</th>
                 <td>${item.task}</td>
-                <td>${item.hour} hour/s</td>
+                <td>${item.hour}hrs</td>
                 <td class="text-end">
-                <button class="btn btn-warning" onClick="handleSwitchTask('${
-                    item.id
-                }')"> <i class="fa-solid fa-arrow-left"></i></button>
-                    <button class="btn btn-danger" onClick="handleOnDelete('${
-                        item.id
-                    }')"> <i class="fa-solid fa-trash"></i></button>
+                    <button type="button" class="btn btn-danger" onclick="deleteTask('${item.id}')"><i
+                            class="fa-solid fa-trash"></i></button>
+    
+                    <button type="button" class="btn btn-success" onclick="switchTask('${item.id}')"><i class="fa-solid fa-arrow-right"></i></button>
                 </td>
-            </tr>`;
-
-            badIndex += 1;
+            </tr>
+            
+            `;
         }
     });
 
-    goodListElement.innerHTML = goodTaskList;
-    badListElement.innerHTML = badTaskList;
+    goodListElement.innerHTML = goodListElementContent;
 
-    const badHoursEelement = document.getElementById("badHours");
-    const totalHoursElement = document.getElementById("totalHours");
-
-    const badHours = getBadHours();
     const totalHours = getTotalHours();
+    const totalHourElement = document.getElementById("totalHour");
+    totalHourElement.innerText = totalHours;
 
-    badHoursEelement.innerText = badHours;
-    totalHoursElement.innerText = totalHours;
-};
+    // updating bad list
+    const badListElement = document.getElementById("badList");
+    let badListElementContent = "";
 
-const handleOnDelete = (id) => {
-    taskList = taskList.filter((task) => task.id != id);
+    let badIndex = 0;
 
-    displayTaskList();
-};
+    taskList.map((item, index) => {
+        if (item.type == "bad") {
+            badIndex += 1;
+            badListElementContent =
+                badListElementContent +
+                `
+                <tr>
+                <th scope="row">${badIndex}</th>
+                <td>${item.task}</td>
+                <td>${item.hour}hrs</td>
+                <td class="text-end">
+                    <button type="button" class="btn btn-warning" onclick="switchTask('${item.id}')"><i
+                            class="fa-solid fa-arrow-left" ></i></button>
+                    <button type="button" class="btn btn-danger" onclick="deleteTask('${item.id}')"><i
+                            class="fa-solid fa-trash"></i></button>
 
-const handleSwitchTask = (id) => {
-    task = taskList.find((task) => task.id == id);
+                </td>
+            </tr>
+            `;
+        }
+    });
 
-    console.log(id);
-    if (task) {
-        task.type = task.type == "good" ? "bad" : "good";
-    }
+    badListElement.innerHTML = badListElementContent;
 
-    displayTaskList();
-};
+    const badHourElement = document.getElementById("badHour");
+    badHourElement.innerText = getBadHours();
 
-const getTotalHours = () => {
-    const totalHours = taskList.reduce((acc, task) => {
-        return acc + task.hour;
-    }, 0);
-
-    return totalHours;
+    // update local storage
+    localStorage.setItem("taskList", JSON.stringify(taskList));
 };
 
 const getBadHours = () => {
-    const badHours = taskList.reduce((acc, task) => {
-        if (task.type == "bad") {
-            return acc + task.hour;
+    let badHours = taskList.reduce((acc, item) => {
+        if (item.type == "bad") {
+            return acc + item.hour;
         } else {
             return acc + 0;
         }
     }, 0);
-
     return badHours;
 };
 
-const generateRandomId = (idLength) => {
-    const str =
-        "qwertyuioplkjhgfdsazxcvbnmQWERTYUIOPLKJHGFDSAZXCVBNM1234567890";
+const getTotalHours = () => {
+    let totalHours = taskList.reduce((acc, item) => {
+        return acc + item.hour;
+    }, 0);
+    return totalHours;
+};
 
-    let id = "";
+const deleteTask = (id) => {
+    taskList = taskList.filter((task) => {
+        return task.id != id;
+    });
 
-    for (i = 0; i < idLength; i++) {
-        const randomPosition = Math.floor(Math.random() * str.length);
-        id += str[randomPosition];
+    displayList();
+    displayAlert("TASK DELETED");
+};
+
+const getRandomUniqueID = () => {
+    let stringGenerator =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let randomString = "";
+
+    for (let i = 0; i < RANDOM_STRING_LENGTH; i++) {
+        let randomIndex = Math.floor(Math.random() * stringGenerator.length);
+        randomString = randomString + stringGenerator[randomIndex];
     }
 
-    return id;
+    return randomString;
 };
+
+const switchTask = (id) => {
+    let task = taskList.find((task) => task.id == id);
+    task.type = task.type == "good" ? "bad" : "good";
+
+    displayList();
+    displayAlert("TASK SWITCHED");
+};
+
+const displayDataFromLocalStorage = () => {
+    let tempList = JSON.parse(localStorage.getItem("taskList"));
+    taskList = tempList ? tempList : [];
+
+    displayList();
+};
+
+const displayAlert = (message) => {
+    const toastMessage = document.getElementById("toast-message");
+
+    toastMessage.innerText = message;
+
+    const toastLiveExample = document.getElementById("liveToast");
+
+    const toastBootstrap =
+        bootstrap.Toast.getOrCreateInstance(toastLiveExample);
+    toastBootstrap.show();
+
+    const notifyElement = document.getElementById("notifyAudio");
+    notifyElement.play();
+};
+
+displayDataFromLocalStorage();
